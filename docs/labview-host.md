@@ -29,7 +29,7 @@ over CAN, and displays the returned energy-quality metrics live.
 | **VISA Resource** | `COM6` | USB serial port of the ESP32 bridge |
 | **Baud Rate** | `115200` | Serial baud rate (matches `Serial.begin(115200)` in the ESP32 sketch) |
 | **CAN_ID** | `100` (0x100) | CAN identifier stamped into each transmitted frame |
-| **Sample Period (ms)** | `50` (also run at `20`) | Loop delay between generated sample frames |
+| **Sample Period (ms)** | `5` · `20` · `50` | Loop delay between generated sample frames (all three rates are exercised in the captures below) |
 | **V_Amplitude** | `230` | Simulated voltage amplitude (V) |
 | **I_Amplitude** | `10` | Simulated current amplitude (A) |
 | **Frequency** | `50` | Grid frequency of the simulated waveforms (Hz) |
@@ -41,7 +41,7 @@ over CAN, and displays the returned energy-quality metrics live.
 | Indicator | Description |
 |---|---|
 | **Voltage Chart / Current Chart** | Time plots of the generated & transmitted V/I waveforms |
-| **Last Frame (Hex)** | The 14-byte packet most recently written to the ESP32 |
+| **Last Frame (Hex)** | The 14-byte packet most recently written to the ESP32 (shown as a hex byte array) |
 | **Frames Sent** | Counter of transmitted frames |
 | **Comm LED** / **status** | Serial-link activity / overall VI status |
 | **Received Frame (Hex)** | Raw bytes read back from the ESP32: bridge status bytes (`AA` …) and relayed `0x200` metric frames |
@@ -55,15 +55,20 @@ over CAN, and displays the returned energy-quality metrics live.
 
 ### Screenshots
 
-Front panel during a live streaming run (`Sample Period` 50 ms, waveforms growing in as the
-charts fill; `Received Frame (Hex)` shows the `AA` bridge ACK followed by a relayed frame):
+Steady-state streaming at **5 ms** sample period — clean 230 V / 10 A sine waves on both
+charts, `Frames Sent` ≈ 2905, `error out` code 0, Comm LED active:
 
-![LabVIEW front panel – live streaming](images/labview-front-panel-run.png)
+![LabVIEW front panel – 5 ms steady-state streaming](images/labview-front-panel-5ms.png)
 
-Front panel during a transient/impulse test (`Sample Period` 20 ms — sharp V and I spikes,
-full sub-score bars):
+Qualification run at **50 ms** — charts filling in from zero while the quality panel is live
+(`Received Frame (Hex)` shows the `AA` bridge ACK; `Last ACK Byte` = `AA`):
 
-![LabVIEW front panel – transient test](images/labview-front-panel-transient.png)
+![LabVIEW front panel – 50 ms streaming run](images/labview-front-panel-run.png)
+
+Transient/impulse test at **20 ms** — sharp V and I spikes on the charts, full sub-score
+bars, gauge needle swung to the far zone while the grade reads `"CRITICAL (F)"`:
+
+![LabVIEW front panel – 20 ms transient test](images/labview-front-panel-transient.png)
 
 ## Block diagram
 
@@ -76,9 +81,15 @@ Per iteration of the timed loop (governed by **Sample Period (ms)**):
 2. **Build_Frame.vi** receives the pair, `CAN_ID` and builds the 14-byte framed packet.
 3. **VISA Write** sends the packet; the returned bridge status byte feeds **Last ACK Byte**
    and the **Comm LED**. Each successful send increments **Frames Sent**.
-4. **VISA Read** polls the port for incoming bytes and displays them on
+4. **VISA Read** polls the port for the 14-byte reply window and displays the raw bytes on
    **Received Frame (Hex)**; parsed `0x200` payloads drive the quality gauge, grade,
    sub-score bars and alert LEDs.
+
+   The read uses the standard VISA Read node — resource in, byte count, read buffer and
+   return count out:
+
+   ![VISA Read node](images/labview-visa-read.png)
+
 5. The loop sleeps for `Sample Period (ms)` and repeats. On **stop**, `VISA Close` releases
    the port.
 
@@ -87,11 +98,12 @@ Serial configuration (`VISA Configure Serial Port`) runs once before the loop wi
 
 ### Captured examples
 
-A live transmit frame (`Last Frame (Hex)`) — one complete 14-byte packet destined for
-CAN ID `0x0100`:
+Live transmit frames (`Last Frame (Hex)`) — complete 14-byte packets destined for
+CAN ID `0x0100`, captured at 50 ms and 5 ms respectively:
 
 ```
 02 01 00 08 71 69 8B B0 F7 4B FE BF 11 03
+02 01 00 08 75 BB 86 B3 F7 4B FE 3F 8F 03
 └┬┘└──┬──┘└┬┘└───── 8 data bytes ─────┘└┬┘└┬┘
  STX  CAN ID DLC        payload          CRC ETX
 ```
@@ -110,5 +122,6 @@ AA 02 02 00 08 4B E6 3D 7E 79 2D 0A
 
 The `error out` cluster may show code **1073676294** from *VISA Read in main.vi*. This is
 LabVIEW's standard **VISA timeout** — the polling read found no bytes pending between
-frames. It is expected while streaming and is not a fault; the loop simply continues on the
-next iteration.
+replies. The steady-state 5 ms capture above shows `code 0` (every read returned data),
+while the slower-rate captures show the timeout between replies; both behaviours are
+normal while streaming and are not faults.

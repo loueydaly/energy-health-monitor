@@ -131,19 +131,25 @@ The bridge also watches TWAI alerts and automatically restarts the driver after 
 
 The PC application `main.vi` is the operator HMI **and** a V/I waveform simulator (`Generate_Viv`) that drives the whole pipeline with configurable test signals (`V_Amplitude`, `I_Amplitude`, `Frequency`, `Phase`) — then decodes the returned `0x200` quality frames into live gauges and alerts.
 
-### Block diagram
+### Front panel — 5 ms steady-state streaming
+
+![LabVIEW front panel – 5 ms steady-state streaming](docs/images/labview-front-panel-5ms.png)
+
+### Front panel — 50 ms streaming run
+
+![LabVIEW front panel – 50 ms streaming run](docs/images/labview-front-panel-run.png)
+
+### Front panel — 20 ms transient test
+
+![LabVIEW front panel – 20 ms transient test](docs/images/labview-front-panel-transient.png)
+
+### Block diagram & VISA Read node
 
 ![LabVIEW main.vi block diagram](docs/images/labview-block-diagram.png)
 
-### Front panel — live streaming
+![VISA Read node](docs/images/labview-visa-read.png)
 
-![LabVIEW front panel – live streaming](docs/images/labview-front-panel-run.png)
-
-### Front panel — transient test
-
-![LabVIEW front panel – transient test](docs/images/labview-front-panel-transient.png)
-
-Controls, indicators, per-iteration data flow, captured frame examples and error-code notes: **[docs/labview-host.md](docs/labview-host.md)**.
+Controls, indicators, per-iteration data flow, captured frame examples and error-code notes: **[docs/labview-host.md](docs/labview-host.md)** · screenshot index: [docs/images/README.md](docs/images/README.md).
 
 ---
 
