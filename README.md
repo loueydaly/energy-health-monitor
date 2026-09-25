@@ -1,11 +1,11 @@
 # Energy Health Monitor
 
-Professional AC power-quality monitoring system: an **STM32F446RE** runs real-time energy-processing algorithms (per IEEE 1459-2010 / IEC 62053-22 / IEC 61000-4-30), an **ESP32** bridges it to a PC over UART, and a **LabVIEW** host application provides the HMI.
+Professional AC power-quality monitoring system: an **STM32F446RE** runs real-time energy-processing algorithms (per IEEE 1459-2010 / IEC 62053-22 / IEC 61000-4-30), an **ESP32** bridges it to a PC over UART, and a **LabVIEW** application (`main.vi`) provides the operator HMI plus a built-in V/I waveform simulator.
 
 ```
 ┌────────────┐   USB UART    ┌─────────────┐    CAN 500 kbps    ┌──────────────────────┐
 │  LabVIEW   │  115200 bps   │    ESP32    │  ────────────────► │  STM32F446RE         │
-│  (PC HMI)  │ ◄───────────► │  (bridge)   │  ◄──────────────── │  EnergyProcessing    │
+│ (HMI + sim)│ ◄───────────► │  (bridge)   │  ◄──────────────── │  EnergyProcessing    │
 └────────────┘  framed 14-B  └─────────────┘   IDs 0x100/0x200  │  FreeRTOS + FPU      │
                                                                 └──────────────────────┘
 ```
@@ -14,11 +14,14 @@ Professional AC power-quality monitoring system: an **STM32F446RE** runs real-ti
 
 ```
 energy-health-monitor/
+├── docs/
+│   ├── labview-host.md        # LabVIEW main.vi documentation (UI + data-flow walkthrough)
+│   └── images/                # LabVIEW screenshots (block diagram + front panel)
 ├── esp32/
-│   └── code_ESP32/          # Arduino sketch (UART ⇄ CAN bridge)
+│   └── code_ESP32/            # Arduino sketch (UART ⇄ CAN bridge)
 │       └── code_ESP32.ino
 └── stm32/
-    └── EnergyProcessing/    # STM32CubeIDE project (energy processing firmware)
+    └── EnergyProcessing/      # STM32CubeIDE project (energy processing firmware)
         ├── Core/            # Application code (EnergyProcessing.c is the core library)
         ├── Drivers/         # STM32F4 HAL + CMSIS
         ├── Middlewares/     # FreeRTOS (CMSIS-RTOS v2)
@@ -121,6 +124,26 @@ The bridge also watches TWAI alerts and automatically restarts the driver after 
 1. Open `code_ESP32.ino` in the **Arduino IDE** (or arduino-cli / PlatformIO).
 2. Install the ESP32 board package; the sketch uses the bundled `driver/twai.h` (ESP-IDF TWAI).
 3. Select your ESP32 board and upload.
+
+---
+
+## LabVIEW host — `docs/`
+
+The PC application `main.vi` is the operator HMI **and** a V/I waveform simulator (`Generate_Viv`) that drives the whole pipeline with configurable test signals (`V_Amplitude`, `I_Amplitude`, `Frequency`, `Phase`) — then decodes the returned `0x200` quality frames into live gauges and alerts.
+
+### Block diagram
+
+![LabVIEW main.vi block diagram](docs/images/labview-block-diagram.png)
+
+### Front panel — live streaming
+
+![LabVIEW front panel – live streaming](docs/images/labview-front-panel-run.png)
+
+### Front panel — transient test
+
+![LabVIEW front panel – transient test](docs/images/labview-front-panel-transient.png)
+
+Controls, indicators, per-iteration data flow, captured frame examples and error-code notes: **[docs/labview-host.md](docs/labview-host.md)**.
 
 ---
 
